@@ -271,3 +271,60 @@ mvn -q test
 /*.iml
 src/main/resources/*.csv
 ```
+---
+
+## Further Improvements
+
+Below are concise ideas for performance, robustness and DX (developer experience). Pick what you need.
+
+### Performance & Scalability
+- **Single-pass aggregation (no brute-force / no full materialization):** compute PP/DM/NH/NU while streaming rows — avoid storing `List<Measurement>` entirely.
+  ```java
+  // Sketch: process row-by-row and aggregate
+  Map<java.time.LocalDate, Long> perDay = new java.util.HashMap<>();
+  long[] perHour = new long[24];
+  Map<fit.cvut.cz.measurement.Segment, Long> perSeg = new java.util.HashMap<>();
+
+  // for each parsed row:
+  perDay.merge(m.dateUTC(), (long) m.value(), Long::sum);
+  perHour[m.hourUTC()] += m.value();
+  perSeg.merge(m.segment(), (long) m.value(), Long::sum);
+  ```
+- **Primitive collections** for hot maps (e.g., *fastutil*, *HPPC*) to reduce GC/boxing.
+- **Parallel chunking** for huge files: split CSV by byte ranges (respecting line breaks), aggregate per-chunk, then merge.
+- **Indexing for queries:** if you later need `by-day`, `by-segment`, build in-memory indexes, or persist pre-aggregations (SQLite/Parquet).
+- **CSV fast path:** auto-detect delimiter, reuse buffers, avoid unnecessary `String` allocations; prefer one `DateTimeFormatter` or parse to epoch seconds if possible.
+- **JMH benchmarks:** add microbenchmarks to verify changes actually help.
+
+### Robustness & Observability
+- **Custom exceptions (optional):** introduce `CsvReaderException` + `CsvMissingColumnException` (error code + user-facing message).
+- **Validation report:** count and print skipped rows (bad dates, missing fields).
+- **Logging:** add SLF4J (`INFO` progress: rows processed; `WARN` for malformed lines).
+- **Config:** support `--sep`, `--no-header`, `--schema <json>` for non-standard CSVs.
+- **Strict/lenient time parsing modes:** `--time=strict|lenient`.
+
+### Output & UX
+- **More exporters:** CSV summary, HTML, Markdown.
+- **Progress indicator:** show rows/second and ETA for big files.
+- **Internationalization:** localized names of statistics (CZ/EN).
+
+### Packaging & Ops
+- **Fat JAR** (Maven Shade / Gradle Shadow) — already supported.
+- **Native image (GraalVM):** instant CLI start-up for large runs.
+- **Docker image:** reproducible environment for CI/CD.
+
+### Quick single-pass example
+If you want to wire single-pass into the current design, add an alternative reader that accepts a consumer:
+
+```java
+public interface StreamingMeasurementReader {
+    void read(Path path, java.util.function.Consumer<fit.cvut.cz.measurement.Measurement> onRow) throws IOException;
+}
+```
+
+Then implement a `StatsAggregator` with `accept(Measurement m)` and feed it from the streaming reader.
+
+### .gitignore / LFS
+Do not commit large CSVs; keep a tiny `sample.csv` in `resources` and track real datasets via Git LFS.
+
+
