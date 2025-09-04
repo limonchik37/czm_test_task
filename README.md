@@ -22,6 +22,7 @@ A small **Java 17+ CLI** that reads Prague cyclist counter data from CSV and com
 - [Extend](#extend)
 - [Testing](#testing)
 - [Notes](#notes)
+- [Further Improvements](#further-improvements)
 
 ---
 
