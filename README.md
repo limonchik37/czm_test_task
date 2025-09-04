@@ -22,7 +22,6 @@ A small **Java 17+ CLI** that reads Prague cyclist counter data from CSV and com
 - [Extend](#extend)
 - [Testing](#testing)
 - [Notes](#notes)
-- [License](#license)
 
 ---
 
@@ -272,9 +271,3 @@ mvn -q test
 /*.iml
 src/main/resources/*.csv
 ```
-
----
-
-## License
-
-Choose a license that fits your needs (e.g., **MIT**) and add it here.
