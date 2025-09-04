@@ -1,124 +1,157 @@
 package fit.cvut.cz.console.handler;
 
+import fit.cvut.cz.console.pages.GuidePage;
+import fit.cvut.cz.console.pages.StartPage;
+import fit.cvut.cz.console.pages.response.ComputeResultPage;
+import fit.cvut.cz.console.pages.response.ErrorResponse;
+import fit.cvut.cz.console.pages.response.ExportDonePage;
+import fit.cvut.cz.console.pages.response.ExportSetPage;
+import fit.cvut.cz.console.pages.response.FileSetPage;
+import fit.cvut.cz.console.pages.response.ListAvailablePage;
+import fit.cvut.cz.console.pages.response.OutDirSetPage;
+import fit.cvut.cz.console.pages.response.StatsSetPage;
+import fit.cvut.cz.console.pages.response.SuccessResponse;
 import fit.cvut.cz.exporter.Report;
-import fit.cvut.cz.exporter.implementation.JsonExporter;
-import fit.cvut.cz.exporter.implementation.XmlExporter;
 import fit.cvut.cz.facade.ReportFacade;
-import fit.cvut.cz.facade.ReportFacadeImpl;
-import fit.cvut.cz.reader.CsvMeasurementReader;
-import fit.cvut.cz.reader.MeasurementReader;
-import fit.cvut.cz.statistics.implementations.AvgPerDayStatistic;
-import fit.cvut.cz.statistics.implementations.DayMaxStatistic;
-import fit.cvut.cz.statistics.implementations.PopularHourStatistic;
-import fit.cvut.cz.statistics.implementations.PopularSegmentStatistic;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
-public final class ConsoleHandler {
+public final class ConsoleHandler implements Handler {
 
     private final ReportFacade facade;
+    private final Scanner in;
 
-    public ConsoleHandler() {
-        // Собираем фасад с дефолтными компонентами один раз
-        MeasurementReader reader = new CsvMeasurementReader();
-        var stats = List.of(
-                new AvgPerDayStatistic(),       // "PP"
-                new DayMaxStatistic(),          // "DM"
-                new PopularHourStatistic(),     // "NH"
-                new PopularSegmentStatistic()   // "NU"
-        );
-        var exporters = List.of(new JsonExporter(), new XmlExporter());
-
-        this.facade = new ReportFacadeImpl(reader, stats, exporters);
+    public ConsoleHandler(ReportFacade facade) {
+        this.facade = Objects.requireNonNull(facade);
+        this.in = new Scanner(System.in);
     }
 
-    public void run() throws Exception {
-        printWelcome();
-        try (Scanner sc = new Scanner(System.in)) {
-            while (true) {
-                System.out.print("(cyclists) > ");
-                String line = sc.nextLine().trim();
-                if (line.isEmpty()) continue;
-                if (line.equalsIgnoreCase("--exit")) break;
+    @Override
+    public void run() {
+        System.out.print(new StartPage().load());
+        System.out.print(new GuidePage().load());
 
-                String[] t = line.split("\\s+");
-                String cmd = t[0].toLowerCase(Locale.ROOT);
+        while (true) {
+            System.out.print("(cyclists) > ");
+            String line = safeReadLine();
+            if (line == null) break;
+            if (line.isBlank()) continue;
+
+            List<String> args = tokenize(line); // поддерживает "пути с пробелами"
+            String cmd = args.get(0).toLowerCase(Locale.ROOT);
+
+            try {
                 switch (cmd) {
-                    case "--help" -> printHelp();
+                    case "--help" -> System.out.print(new GuidePage().load());
+                    case "--exit" -> {
+                        System.out.print(new SuccessResponse("Bye").load());
+                        return;
+                    }
+
                     case "--file" -> {
-                        ensureArgs(t, 2);
-                        facade.setCsv(Path.of(t[1]));
-                        System.out.println("CSV set: " + t[1]);
+                        requireArgs(cmd, args, 2);
+                        Path p = Path.of(args.get(1));
+                        facade.setCsv(p);
+                        System.out.print(new FileSetPage(p).load());
                     }
+
                     case "--stats" -> {
-                        ensureArgs(t, 2);
-                        facade.setStatCodes(splitCsv(t[1]));
-                        System.out.println("Stats set: " + t[1]);
+                        requireArgs(cmd, args, 2);
+                        var codes = splitCsv(args.get(1));
+                        facade.setStatCodes(codes);
+                        System.out.print(new StatsSetPage(codes).load());
                     }
+
                     case "--export" -> {
-                        ensureArgs(t, 2);
-                        facade.setExportCodes(splitCsv(t[1]));
-                        System.out.println("Export set: " + t[1]);
+                        requireArgs(cmd, args, 2);
+                        var codes = splitCsv(args.get(1));
+                        facade.setExportCodes(codes);
+                        System.out.print(new ExportSetPage(codes).load());
                     }
+
                     case "--out" -> {
-                        ensureArgs(t, 2);
-                        facade.setOutDir(Path.of(t[1]));
-                        System.out.println("Out dir: " + t[1]);
+                        requireArgs(cmd, args, 2);
+                        Path dir = Path.of(args.get(1));
+                        facade.setOutDir(dir);
+                        System.out.print(new OutDirSetPage(dir).load());
                     }
+
+                    case "--list" -> {
+                        var stats = facade.availableStatistics();
+                        var exps = facade.availableExporters();
+                        System.out.print(new ListAvailablePage(stats, exps).load());
+                    }
+
                     case "--show" -> {
                         Report r = facade.compute();
-                        r.statistics().forEach(res ->
-                                System.out.println(res.name() + " = " + res.result()));
+                        System.out.print(new ComputeResultPage(r).load());
                     }
+
                     case "--run" -> {
                         Report r = facade.compute();
-                        facade.export(r);
-                        System.out.println("Done. Exported files in out dir.");
+                        var files = facade.export(r);
+                        System.out.print(new ExportDonePage(files).load());
                     }
-                    case "--list" -> {
-                        System.out.println("Stats: " + facade.availableStatistics());
-                        System.out.println("Exporters: " + facade.availableExporters());
-                    }
-                    default -> System.out.println("Unknown command. Use --help");
+
+                    default -> System.out.print(new ErrorResponse("Unknown command: " + cmd).load());
                 }
+            } catch (Exception e) {
+                System.out.print(new ErrorResponse(e.getMessage() == null ? e.toString() : e.getMessage()).load());
             }
         }
     }
 
-    private static List<String> splitCsv(String csv) {
-        return Arrays.stream(csv.split(","))
-                .map(String::trim).filter(s -> !s.isEmpty()).toList();
-    }
-    private static void ensureArgs(String[] t, int need) {
-        if (t.length < need) throw new IllegalArgumentException("Not enough args for " + t[0]);
+    // ---------- helpers ----------
+
+    private static void requireArgs(String cmd, List<String> args, int need) {
+        if (args.size() < need) throw new IllegalArgumentException("Not enough args for " + cmd);
     }
 
-    private static void printWelcome() {
-        System.out.println("""
-                Cyclists CLI
-                Type --help for commands. Example:
-                  --file bc-2020-q1.csv
-                  --stats PP,DM,NH,NU
-                  --export JSON,XML
-                  --out .
-                  --run
-                """);
+    private static List<String> splitCsv(String csv) {
+        return Arrays.stream(csv.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty())
+                .map(s -> s.toUpperCase(Locale.ROOT))
+                .distinct().collect(Collectors.toList());
     }
-    private static void printHelp() {
-        System.out.println("""
-                Commands:
-                  --file <path>         set CSV file
-                  --stats <codes>       PP,DM,NH,NU
-                  --export <codes>      JSON,XML
-                  --out <dir>           output directory (default ".")
-                  --show                compute and print to console
-                  --run                 compute and export files
-                  --list                list available stats/exporters
-                  --exit
-                """);
+
+    /**
+     * Разбивает строку на токены, поддерживая кавычки для путей с пробелами.
+     */
+    private static List<String> tokenize(String line) {
+        List<String> out = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                inQuotes = !inQuotes;
+                continue;
+            }
+            if (Character.isWhitespace(c) && !inQuotes) {
+                if (cur.length() > 0) {
+                    out.add(cur.toString());
+                    cur.setLength(0);
+                }
+            } else cur.append(c);
+        }
+        if (cur.length() > 0) out.add(cur.toString());
+        if (out.isEmpty()) out.add(""); // чтобы не ловить NPE
+        return out;
+    }
+
+    private String safeReadLine() {
+        try {
+            return in.nextLine();
+        } catch (NoSuchElementException e) {
+            return null;
+        }
     }
 }
