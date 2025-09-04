@@ -9,10 +9,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * NU — most frequent segment (sum of values per Segment).
+ * Tie-break: lexicographic by fromId, then toId.
+ */
 public final class PopularSegmentStatistic implements Statistics {
     @Override public String code() { return "NU"; }
     @Override public String name() { return "Most frequent segment"; }
 
+    /**
+     * @return "from->to" of the top segment, or "N/A" if none
+     */
     @Override
     public String compute(List<Measurement> data) {
         Map<Segment, Long> perSeg = data.stream().collect(
@@ -20,8 +27,8 @@ public final class PopularSegmentStatistic implements Statistics {
         );
         return perSeg.entrySet().stream()
                 .max(Comparator
-                        .<Map.Entry<Segment, Long>>comparingLong(Map.Entry::getValue) // максимум по сумме
-                        .thenComparing(e -> e.getKey().fromId())                      // при равенстве — лексикографически
+                        .<Map.Entry<Segment, Long>>comparingLong(Map.Entry::getValue)
+                        .thenComparing(e -> e.getKey().fromId())
                         .thenComparing(e -> e.getKey().toId())
                 )
                 .map(e -> e.getKey().fromId() + "->" + e.getKey().toId())

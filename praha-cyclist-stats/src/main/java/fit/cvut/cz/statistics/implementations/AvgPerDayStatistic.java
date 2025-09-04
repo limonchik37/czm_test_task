@@ -9,10 +9,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * PP — average cyclist count per day (two decimals).
+ */
 public final class AvgPerDayStatistic implements Statistics {
-    @Override public String code() { return "PP"; }
-    @Override public String name() { return "Average cyclist count per day"; }
+    @Override
+    public String code() { return "PP"; }
+    @Override
+    public String name() { return "Average cyclist count per day"; }
 
+    /**
+     * @return average per distinct day, formatted as "0.00"
+     */
     @Override
     public String compute(List<Measurement> data) {
         Map<LocalDate, Long> perDay = data.stream().collect(

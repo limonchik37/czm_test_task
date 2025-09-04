@@ -1,5 +1,4 @@
 package fit.cvut.cz.exporter;
 
-public record Result(String name, String result) {
-
-}
+/** Pair of statistic name and its display value. */
+public record Result(String name, String result) { }

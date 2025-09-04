@@ -9,8 +9,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Minimal JSON exporter (manual rendering, no external libs).
+ */
 public final class JsonExporter implements Exporter {
-    @Override public String code() { return "JSON"; }
+    @Override
+    public String code() { return "JSON"; }
 
     @Override
     public void export(Report report, Path out) throws IOException {

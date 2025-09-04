@@ -1,9 +1,12 @@
-package fit.cvut.cz.console.pages.response;
+package fit.cvut.cz.console.pages;
 
 import fit.cvut.cz.console.TextPage;
 import fit.cvut.cz.exporter.Report;
 import fit.cvut.cz.exporter.Result;
 
+/**
+ * Prints computed results in a readable block.
+ */
 public record ComputeResultPage(Report report) implements TextPage {
     @Override
     public String load() {

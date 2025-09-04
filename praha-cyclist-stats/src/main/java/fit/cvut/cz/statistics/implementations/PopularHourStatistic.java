@@ -5,10 +5,19 @@ import fit.cvut.cz.statistics.Statistics;
 
 import java.util.List;
 
+/**
+ * NH — most popular hour of day (UTC).
+ * Tie-break: lowest hour wins.
+ */
 public final class PopularHourStatistic implements Statistics {
-    @Override public String code() { return "NH"; }
-    @Override public String name() { return "Most popular hour of day"; }
+    @Override
+    public String code() { return "NH"; }
+    @Override
+    public String name() { return "Most popular hour of day"; }
 
+    /**
+     * @return hour (0–23) as string
+     */
     @Override
     public String compute(List<Measurement> data) {
         long[] hours = new long[24];

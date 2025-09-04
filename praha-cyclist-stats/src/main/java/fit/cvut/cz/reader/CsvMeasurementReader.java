@@ -19,6 +19,11 @@ import java.util.Collections;
 import java.util.List;
 
 
+/**
+ * CSV reader (default delimiter: ',').
+ * Expected header: locations_id,directions_id,measured_from,measured_to,value
+ * Empty/invalid value → 0; invalid timestamps → row skipped.
+ */
 public final class CsvMeasurementReader implements MeasurementReader {
     private static final char SEP = ',';
 
@@ -28,10 +33,8 @@ public final class CsvMeasurementReader implements MeasurementReader {
             var parser  = new CSVParserBuilder().withSeparator(SEP).build();
             try (CSVReader reader = new CSVReaderBuilder(br).withCSVParser(parser).build()) {
 
-                // 1) пропускаем заголовок
                 if (reader.readNext() == null) return List.of();
 
-                // 2) читаем строки
                 List<Measurement> out = new ArrayList<>();
                 String[] row;
                 while ((row = reader.readNext()) != null) {
@@ -59,13 +62,16 @@ public final class CsvMeasurementReader implements MeasurementReader {
     }
 
     // --- helpers ---
+    /** Null/blank safe trim. */
     private static String safeTrim(String s) { return s == null ? "" : s.trim(); }
 
+    /** Parse int or return 0 for blank/invalid. */
     private static int parseIntOrZero(String s) {
         if (s == null || s.isBlank()) return 0;
         try { return Integer.parseInt(s); } catch (Exception ignore) { return 0; }
     }
 
+    /** Lenient ISO-8601 parse (allows space instead of 'T'). */
     private static Instant parseInstant(String s) {
         if (s == null || s.isBlank()) return null;
         try {

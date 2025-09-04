@@ -4,6 +4,5 @@ package fit.cvut.cz.exporter;
 import java.time.Instant;
 import java.util.List;
 
-public record Report(Instant created, List<Result> statistics) {
-
-}
+/** Final report with creation timestamp and statistic results. */
+public record Report(Instant created, List<Result> statistics) { }

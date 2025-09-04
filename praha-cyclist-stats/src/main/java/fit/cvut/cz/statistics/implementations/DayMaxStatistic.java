@@ -9,10 +9,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * DM — day with maximum total cyclist count.
+ * Tie-break: earlier date.
+ */
 public final class DayMaxStatistic implements Statistics {
-    @Override public String code() { return "DM"; }
-    @Override public String name() { return "Day with maximum cyclist count"; }
+    @Override
+    public String code() { return "DM"; }
+    @Override
+    public String name() { return "Day with maximum cyclist count"; }
 
+    /**
+     * @return date "yyyy-MM-dd" or "N/A" if dataset empty
+     */
     @Override
     public String compute(List<Measurement> data) {
         Map<LocalDate, Long> perDay = data.stream().collect(
@@ -20,8 +29,8 @@ public final class DayMaxStatistic implements Statistics {
         );
         return perDay.entrySet().stream()
                 .max(Comparator
-                        .<Map.Entry<LocalDate, Long>>comparingLong(Map.Entry::getValue) // максимум по значению
-                        .thenComparing(Map.Entry::getKey) // при равенстве — более ранняя дата
+                        .<Map.Entry<LocalDate, Long>>comparingLong(Map.Entry::getValue)
+                        .thenComparing(Map.Entry::getKey)
                 )
                 .map(e -> e.getKey().toString())
                 .orElse("N/A");

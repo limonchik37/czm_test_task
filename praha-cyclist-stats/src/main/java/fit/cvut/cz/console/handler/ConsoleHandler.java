@@ -2,14 +2,14 @@ package fit.cvut.cz.console.handler;
 
 import fit.cvut.cz.console.pages.GuidePage;
 import fit.cvut.cz.console.pages.StartPage;
-import fit.cvut.cz.console.pages.response.ComputeResultPage;
+import fit.cvut.cz.console.pages.ComputeResultPage;
 import fit.cvut.cz.console.pages.response.ErrorResponse;
-import fit.cvut.cz.console.pages.response.ExportDonePage;
-import fit.cvut.cz.console.pages.response.ExportSetPage;
-import fit.cvut.cz.console.pages.response.FileSetPage;
-import fit.cvut.cz.console.pages.response.ListAvailablePage;
-import fit.cvut.cz.console.pages.response.OutDirSetPage;
-import fit.cvut.cz.console.pages.response.StatsSetPage;
+import fit.cvut.cz.console.pages.ExportDonePage;
+import fit.cvut.cz.console.pages.ExportSetPage;
+import fit.cvut.cz.console.pages.FileSetPage;
+import fit.cvut.cz.console.pages.ListAvailablePage;
+import fit.cvut.cz.console.pages.OutDirSetPage;
+import fit.cvut.cz.console.pages.StatsSetPage;
 import fit.cvut.cz.console.pages.response.SuccessResponse;
 import fit.cvut.cz.exporter.Report;
 import fit.cvut.cz.facade.ReportFacade;
@@ -24,16 +24,27 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
+/**
+ * Simple CLI loop: parses commands, delegates to {@link ReportFacade},
+ * and prints responses using console "pages".
+ */
 public final class ConsoleHandler implements Handler {
 
     private final ReportFacade facade;
     private final Scanner in;
 
+    /**
+     * @param facade orchestrates reader, statistics, and exporters
+     */
     public ConsoleHandler(ReportFacade facade) {
         this.facade = Objects.requireNonNull(facade);
         this.in = new Scanner(System.in);
     }
 
+    /**
+     * Starts the REPL-style loop.
+     * Supported commands: --help, --exit, --file, --stats, --export, --out, --list, --show, --run.
+     */
     @Override
     public void run() {
         System.out.print(new StartPage().load());
@@ -45,7 +56,8 @@ public final class ConsoleHandler implements Handler {
             if (line == null) break;
             if (line.isBlank()) continue;
 
-            List<String> args = tokenize(line); // поддерживает "пути с пробелами"
+            // supports quoted paths with spaces
+            List<String> args = tokenize(line);
             String cmd = args.get(0).toLowerCase(Locale.ROOT);
 
             try {
@@ -111,10 +123,17 @@ public final class ConsoleHandler implements Handler {
 
     // ---------- helpers ----------
 
+    /**
+     * Ensures the command has at least {@code need} arguments.
+     * @throws IllegalArgumentException if not enough args
+     */
     private static void requireArgs(String cmd, List<String> args, int need) {
         if (args.size() < need) throw new IllegalArgumentException("Not enough args for " + cmd);
     }
 
+    /**
+     * Splits comma-separated codes, normalizes to UPPER, trims, and de-duplicates.
+     */
     private static List<String> splitCsv(String csv) {
         return Arrays.stream(csv.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty())
@@ -123,7 +142,8 @@ public final class ConsoleHandler implements Handler {
     }
 
     /**
-     * Разбивает строку на токены, поддерживая кавычки для путей с пробелами.
+     * Tokenizes a line while respecting double quotes for paths with spaces.
+     * Example: --file "C:\my data\file.csv"
      */
     private static List<String> tokenize(String line) {
         List<String> out = new ArrayList<>();
@@ -143,10 +163,13 @@ public final class ConsoleHandler implements Handler {
             } else cur.append(c);
         }
         if (cur.length() > 0) out.add(cur.toString());
-        if (out.isEmpty()) out.add(""); // чтобы не ловить NPE
+        if (out.isEmpty()) out.add(""); // keep at least one token
         return out;
     }
 
+    /**
+     * Reads a line from stdin; returns {@code null} on EOF.
+     */
     private String safeReadLine() {
         try {
             return in.nextLine();

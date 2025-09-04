@@ -15,16 +15,38 @@ import fit.cvut.cz.statistics.implementations.PopularSegmentStatistic;
 
 import java.util.List;
 
-public class Main {
-    public static void main(String[] args) throws Exception {
-        MeasurementReader reader = new CsvMeasurementReader();
-        var stats = List.of(
-                new AvgPerDayStatistic(), new DayMaxStatistic(),
-                new PopularHourStatistic(), new PopularSegmentStatistic()
-        );
-        var exporters = List.of(new JsonExporter(), new XmlExporter());
+/**
+ * Entry point for the Cyclists CLI.
+ * Wires reader + statistics + exporters into the facade and starts the console UI.
+ */
+public final class Main {
 
+    /**
+     * Starts the interactive console.
+     * @param args unused (configuration is done interactively)
+     */
+    public static void main(String[] args) throws Exception {
+        // 1) data source (CSV reader)
+        MeasurementReader reader = new CsvMeasurementReader();
+
+        // 2) statistics to compute
+        var stats = List.of(
+                new AvgPerDayStatistic(),   // PP
+                new DayMaxStatistic(),      // DM
+                new PopularHourStatistic(), // NH
+                new PopularSegmentStatistic() // NU
+        );
+
+        // 3) output formats
+        var exporters = List.of(
+                new JsonExporter(),
+                new XmlExporter()
+        );
+
+        // 4) facade (glues everything together)
         ReportFacade facade = new ReportFacadeImpl(reader, stats, exporters);
+
+        // 5) console handler (interactive shell)
         Handler handler = new ConsoleHandler(facade);
         handler.run();
     }

@@ -9,8 +9,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Minimal XML exporter (no external libs).
+ */
 public final class XmlExporter implements Exporter {
-    @Override public String code() { return "XML"; }
+    @Override
+    public String code() { return "XML"; }
 
     @Override
     public void export(Report report, Path out) throws IOException {
@@ -29,6 +33,7 @@ public final class XmlExporter implements Exporter {
         Files.writeString(out, sb.toString(), StandardCharsets.UTF_8);
     }
 
+    /** Tiny XML escaping. */
     private static String escape(String s) {
         return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;");
     }
